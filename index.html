@@ -1,0 +1,701 @@
+<title>연차 관리 보드</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    --bg:#EEF0EA;
+    --surface:#FFFFFF;
+    --surface-2:#F5F6F0;
+    --ink:#23261F;
+    --muted:#6D7264;
+    --border:#DADDD1;
+    --accent:#2F5D50;
+    --accent-ink:#FFFFFF;
+    --accent-soft:#E3ECE6;
+    --warn:#95681E;
+    --warn-soft:#F3E7CE;
+    --critical:#9A3B2B;
+    --critical-soft:#F3E0DA;
+    --shadow: 0 1px 2px rgba(35,38,31,0.06), 0 8px 24px -12px rgba(35,38,31,0.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15170F;
+      --surface:#1E221A;
+      --surface-2:#242819;
+      --ink:#ECEEE3;
+      --muted:#9BA08C;
+      --border:#333927;
+      --accent:#7BB69A;
+      --accent-ink:#10241B;
+      --accent-soft:#233327;
+      --warn:#E0B564;
+      --warn-soft:#3A2E14;
+      --critical:#E28E76;
+      --critical-soft:#3B211A;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15170F;
+    --surface:#1E221A;
+    --surface-2:#242819;
+    --ink:#ECEEE3;
+    --muted:#9BA08C;
+    --border:#333927;
+    --accent:#7BB69A;
+    --accent-ink:#10241B;
+    --accent-soft:#233327;
+    --warn:#E0B564;
+    --warn-soft:#3A2E14;
+    --critical:#E28E76;
+    --critical-soft:#3B211A;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size:14px;
+    line-height:1.5;
+  }
+  .wrap{
+    max-width:1080px;
+    margin:0 auto;
+    padding:36px 24px 64px;
+  }
+  h1,h2,h3{
+    font-family:"Fraunces", Georgia, serif;
+    font-weight:600;
+    text-wrap:balance;
+    margin:0;
+  }
+  .mono{ font-family:"IBM Plex Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums; }
+
+  header.top{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:28px;
+    flex-wrap:wrap;
+  }
+  header.top h1{ font-size:28px; }
+  header.top p{ margin:6px 0 0; color:var(--muted); font-size:13px; }
+  .sync-pill{
+    font-size:12px;
+    color:var(--muted);
+    border:1px solid var(--border);
+    background:var(--surface);
+    padding:5px 10px;
+    border-radius:100px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .sync-dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); flex:none; }
+  .sync-dot.off{ background:var(--muted); }
+
+  /* employee cards */
+  .roster{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+    gap:12px;
+    margin-bottom:32px;
+  }
+  .emp-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px;
+    box-shadow:var(--shadow);
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    min-width:0;
+  }
+  .emp-name-row{ display:flex; align-items:baseline; justify-content:space-between; gap:6px; }
+  .emp-del-btn{
+    flex:none; font-size:11px; cursor:pointer; border:1px solid var(--border); background:transparent;
+    color:var(--muted); padding:3px 7px; border-radius:6px; white-space:nowrap;
+  }
+  .emp-del-btn.confirming{ border-color:var(--critical); color:var(--critical); background:var(--critical-soft); font-weight:600; }
+  .add-emp-row{ display:flex; gap:8px; margin:-18px 0 32px; }
+  .add-emp-row input{
+    font:inherit; padding:8px 10px; border-radius:8px; border:1px dashed var(--border);
+    background:transparent; color:var(--ink); flex:1; max-width:220px;
+  }
+  .emp-name{
+    font-family:"Fraunces", serif;
+    font-size:18px;
+    font-weight:600;
+    background:transparent;
+    border:none;
+    color:var(--ink);
+    padding:0;
+    width:100%;
+    min-width:0;
+    border-bottom:1px dashed transparent;
+  }
+  .emp-name:hover, .emp-name:focus{ border-bottom-color:var(--border); outline:none; }
+  .emp-figures{ display:flex; align-items:baseline; gap:6px; }
+  .emp-remaining{ font-size:26px; font-weight:600; font-family:"Fraunces", serif; }
+  .emp-remaining.good{ color:var(--accent); }
+  .emp-remaining.warn{ color:var(--warn); }
+  .emp-remaining.critical{ color:var(--critical); }
+  .emp-unit{ font-size:12px; color:var(--muted); }
+  .emp-bar-track{ height:6px; border-radius:100px; background:var(--surface-2); overflow:hidden; }
+  .emp-bar-fill{ height:100%; border-radius:100px; background:var(--accent); transition:width .25s ease; }
+  .emp-bar-fill.warn{ background:var(--warn); }
+  .emp-bar-fill.critical{ background:var(--critical); }
+  .emp-meta{ display:flex; justify-content:space-between; font-size:12px; color:var(--muted); }
+  .emp-total-edit{ display:flex; align-items:center; gap:4px; font-size:12px; color:var(--muted); }
+  .emp-total-edit input{
+    width:40px; font-family:"IBM Plex Mono", monospace; font-size:12px;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:2px 4px; color:var(--ink); text-align:center;
+  }
+
+  .board{
+    display:grid;
+    grid-template-columns:320px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+  @media (max-width:760px){ .board{ grid-template-columns:1fr; } }
+
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:20px;
+    box-shadow:var(--shadow);
+  }
+  .panel h2{ font-size:16px; margin-bottom:14px; }
+
+  form.leave-form{ display:flex; flex-direction:column; gap:12px; }
+  .field{ display:flex; flex-direction:column; gap:5px; }
+  .field label{ font-size:12px; color:var(--muted); font-weight:600; letter-spacing:.02em; }
+  .field select, .field input[type="date"], .field input[type="text"]{
+    font:inherit;
+    font-family:"Public Sans", sans-serif;
+    padding:8px 10px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--surface-2);
+    color:var(--ink);
+  }
+  .field select:focus, .field input:focus, .emp-name:focus, button:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+  }
+  .date-row{ display:flex; gap:8px; }
+  .date-row .field{ flex:1; min-width:0; }
+  .checkline{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted); }
+  .checkline input{ accent-color:var(--accent); width:15px; height:15px; }
+  .preview-days{
+    font-size:12.5px; color:var(--muted); background:var(--surface-2);
+    border:1px dashed var(--border); border-radius:8px; padding:8px 10px;
+  }
+  .preview-days b{ color:var(--ink); font-family:"IBM Plex Mono", monospace; }
+  .btn{
+    font:inherit; font-weight:600; cursor:pointer;
+    border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink);
+    padding:10px 14px; border-radius:9px;
+  }
+  .btn:hover{ filter:brightness(1.05); }
+  .btn.ghost{ background:transparent; color:var(--ink); border-color:var(--border); font-weight:500; }
+  .form-msg{ font-size:12.5px; color:var(--critical); min-height:1em; }
+
+  .history-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+  .history-head select{
+    font:inherit; padding:7px 10px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--ink);
+  }
+  .table-scroll{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; min-width:520px; }
+  thead th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--muted); font-weight:600; padding:0 10px 8px; border-bottom:1px solid var(--border);
+  }
+  tbody td{ padding:10px; border-bottom:1px solid var(--border); vertical-align:top; }
+  tbody tr:last-child td{ border-bottom:none; }
+  .type-chip{
+    display:inline-block; font-size:11.5px; font-weight:600; padding:2px 8px; border-radius:100px;
+    background:var(--accent-soft); color:var(--accent);
+  }
+  .empty-row td{ color:var(--muted); text-align:center; padding:28px 10px; }
+  .del-btn{
+    font:inherit; font-size:12px; cursor:pointer; border:1px solid var(--border); background:transparent;
+    color:var(--muted); padding:5px 9px; border-radius:7px;
+  }
+  .del-btn.confirming{ border-color:var(--critical); color:var(--critical); background:var(--critical-soft); font-weight:600; }
+  .locked-label{ font-size:11.5px; color:var(--muted); }
+  .memo-cell{ color:var(--muted); max-width:160px; }
+  footer.hint{ margin-top:22px; font-size:12px; color:var(--muted); text-align:center; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>연차 관리 보드</h1>
+      <p>직원 5명의 연차 · 반차 현황을 한눈에 확인하고 기록하세요.</p>
+    </div>
+    <div class="sync-pill"><span id="syncDot" class="sync-dot off"></span><span id="syncLabel">연결 확인 중…</span></div>
+  </header>
+
+  <section class="roster" id="roster"></section>
+  <div class="add-emp-row">
+    <input type="text" id="newEmpName" placeholder="새 직원 이름" maxlength="20">
+    <button type="button" class="btn ghost" id="addEmpBtn">+ 직원 추가</button>
+  </div>
+
+  <section class="board">
+    <div class="panel">
+      <h2>휴가 등록</h2>
+      <form class="leave-form" id="leaveForm">
+        <div class="field">
+          <label for="f-emp">직원</label>
+          <select id="f-emp"></select>
+        </div>
+        <div class="field">
+          <label for="f-type">종류</label>
+          <select id="f-type">
+            <option value="연차">연차</option>
+            <option value="반차">반차</option>
+          </select>
+        </div>
+        <div class="date-row">
+          <div class="field">
+            <label for="f-start">시작일</label>
+            <input type="date" id="f-start" required>
+          </div>
+          <div class="field" id="f-end-field">
+            <label for="f-end">종료일</label>
+            <input type="date" id="f-end" required>
+          </div>
+        </div>
+        <div class="preview-days" id="preview">평일 기준 <b>0일</b> 계산됨</div>
+        <div class="field">
+          <label for="f-memo">메모 (선택)</label>
+          <input type="text" id="f-memo" placeholder="예: 가족 여행">
+        </div>
+        <div class="form-msg" id="formMsg"></div>
+        <button type="submit" class="btn">등록하기</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="history-head">
+        <h2 style="margin:0;">휴가 기록</h2>
+        <select id="filterEmp"><option value="all">전체 직원</option></select>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>직원</th><th>종류</th><th>기간</th><th>일수</th><th>메모</th><th></th></tr>
+          </thead>
+          <tbody id="historyBody"><tr class="empty-row"><td colspan="6">불러오는 중…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer class="hint">이름과 총 연차 일수는 클릭해서 바로 수정할 수 있어요. 휴가 사용일이 지난 기록은 자동으로 잠겨 삭제할 수 없습니다.</footer>
+</div>
+
+<script>
+(function(){
+  var HALF_TYPES = { "반차":true };
+
+  var state = {
+    employees: [1,2,3,4,5].map(function(i){ return { id:"emp"+i, name:"직원 "+i, totalDays:15 }; }),
+    leaves: []
+  };
+  var db = null;
+  var usingDb = false;
+  var confirmingId = null;
+  var confirmingEmpId = null;
+
+  function isLocked(leave){
+    return leave.end < todayStr();
+  }
+
+  function todayStr(){
+    var d = new Date();
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+
+  function countWeekdays(startStr, endStr){
+    var start = new Date(startStr+"T00:00:00");
+    var end = new Date(endStr+"T00:00:00");
+    if (isNaN(start) || isNaN(end) || end < start) return 0;
+    var count = 0;
+    var d = new Date(start);
+    while (d <= end){
+      var day = d.getDay();
+      if (day !== 0 && day !== 6) count++;
+      d.setDate(d.getDate()+1);
+    }
+    return count;
+  }
+
+  function empName(id){
+    var e = state.employees.find(function(x){ return x.id === id; });
+    return e ? e.name : "(삭제된 직원)";
+  }
+
+  function usedDays(empId){
+    return state.leaves.reduce(function(sum, l){
+      if (l.employeeId === empId) return sum + l.days;
+      return sum;
+    }, 0);
+  }
+
+  function renderRoster(){
+    var roster = document.getElementById("roster");
+    if (state.employees.length === 0){
+      roster.innerHTML = '<p class="locked-label">등록된 직원이 없습니다. 아래에서 추가해주세요.</p>';
+      return;
+    }
+    roster.innerHTML = "";
+    state.employees.forEach(function(emp){
+      var used = usedDays(emp.id);
+      var remaining = Math.round((emp.totalDays - used) * 10) / 10;
+      var ratio = emp.totalDays > 0 ? Math.min(1, used / emp.totalDays) : 0;
+      var cls = remaining <= 0 ? "critical" : (remaining <= 4 ? "warn" : "good");
+      var confirming = confirmingEmpId === emp.id;
+
+      var card = document.createElement("div");
+      card.className = "emp-card";
+      card.innerHTML =
+        '<div class="emp-name-row">' +
+          '<input class="emp-name" value="'+escapeAttr(emp.name)+'" data-id="'+emp.id+'" aria-label="직원 이름">' +
+          '<button class="emp-del-btn'+(confirming?' confirming':'')+'" data-id="'+emp.id+'">'+(confirming?'정말 삭제?':'삭제')+'</button>' +
+        '</div>' +
+        '<div class="emp-figures">' +
+          '<span class="emp-remaining '+cls+'">'+remaining+'</span>' +
+          '<span class="emp-unit">일 남음</span>' +
+        '</div>' +
+        '<div class="emp-bar-track"><div class="emp-bar-fill '+cls+'" style="width:'+(ratio*100)+'%"></div></div>' +
+        '<div class="emp-meta">' +
+          '<span>사용 <span class="mono">'+used+'</span>일</span>' +
+          '<span class="emp-total-edit">총 <input type="number" min="0" step="0.5" value="'+emp.totalDays+'" data-id="'+emp.id+'" class="emp-total-input">일</span>' +
+        '</div>';
+      roster.appendChild(card);
+    });
+
+    roster.querySelectorAll(".emp-name").forEach(function(input){
+      input.addEventListener("change", function(){
+        updateEmployee(input.dataset.id, { name: input.value.trim() || "직원" });
+      });
+    });
+    roster.querySelectorAll(".emp-total-input").forEach(function(input){
+      input.addEventListener("change", function(){
+        var v = parseFloat(input.value);
+        if (isNaN(v) || v < 0) v = 0;
+        updateEmployee(input.dataset.id, { totalDays: v });
+      });
+    });
+    roster.querySelectorAll(".emp-del-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.dataset.id;
+        if (confirmingEmpId === id){
+          confirmingEmpId = null;
+          deleteEmployee(id);
+        } else {
+          confirmingEmpId = id;
+          renderRoster();
+        }
+      });
+    });
+  }
+
+  function escapeAttr(s){
+    return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+  }
+  function escapeHtml(s){
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function fmtRange(start, end){
+    if (start === end) return start;
+    return start + " ~ " + end;
+  }
+
+  function renderFilterOptions(){
+    var sel = document.getElementById("filterEmp");
+    var current = sel.value || "all";
+    sel.innerHTML = '<option value="all">전체 직원</option>' +
+      state.employees.map(function(e){ return '<option value="'+e.id+'">'+escapeHtml(e.name)+'</option>'; }).join("");
+    sel.value = current;
+
+    var fEmp = document.getElementById("f-emp");
+    var curF = fEmp.value;
+    fEmp.innerHTML = state.employees.map(function(e){ return '<option value="'+e.id+'">'+escapeHtml(e.name)+'</option>'; }).join("");
+    if (curF) fEmp.value = curF;
+  }
+
+  function renderHistory(){
+    var body = document.getElementById("historyBody");
+    var filter = document.getElementById("filterEmp").value || "all";
+    var rows = state.leaves
+      .filter(function(l){ return filter === "all" || l.employeeId === filter; })
+      .slice()
+      .sort(function(a,b){ return (b.start).localeCompare(a.start); });
+
+    if (rows.length === 0){
+      body.innerHTML = '<tr class="empty-row"><td colspan="6">등록된 휴가 기록이 없습니다.</td></tr>';
+      return;
+    }
+
+    body.innerHTML = rows.map(function(l){
+      var confirming = confirmingId === l.id;
+      var locked = isLocked(l);
+      var actionCell = locked
+        ? '<span class="locked-label">완료됨</span>'
+        : '<button class="del-btn'+(confirming?' confirming':'')+'" data-id="'+l.id+'">'+(confirming?'정말 삭제?':'삭제')+'</button>';
+      return '<tr>' +
+        '<td>'+escapeHtml(empName(l.employeeId))+'</td>' +
+        '<td><span class="type-chip">'+escapeHtml(l.type)+'</span></td>' +
+        '<td class="mono">'+fmtRange(l.start, l.end)+'</td>' +
+        '<td class="mono">'+l.days+'일</td>' +
+        '<td class="memo-cell">'+(l.memo ? escapeHtml(l.memo) : "—")+'</td>' +
+        '<td>'+actionCell+'</td>' +
+      '</tr>';
+    }).join("");
+
+    body.querySelectorAll(".del-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.dataset.id;
+        if (confirmingId === id){
+          confirmingId = null;
+          deleteLeave(id);
+        } else {
+          confirmingId = id;
+          renderHistory();
+        }
+      });
+    });
+  }
+
+  function renderAll(){
+    renderRoster();
+    renderFilterOptions();
+    renderHistory();
+  }
+
+  function setSync(status){
+    var dot = document.getElementById("syncDot");
+    var label = document.getElementById("syncLabel");
+    if (status === "on"){
+      dot.className = "sync-dot";
+      label.textContent = "실시간 동기화됨";
+    } else {
+      dot.className = "sync-dot off";
+      label.textContent = "이 브라우저에만 저장됨";
+    }
+  }
+
+  function saveLocal(){
+    try{
+      localStorage.setItem("leave-tracker-state", JSON.stringify(state));
+    }catch(e){}
+  }
+  function loadLocal(){
+    try{
+      var raw = localStorage.getItem("leave-tracker-state");
+      if (raw){
+        var parsed = JSON.parse(raw);
+        if (parsed && parsed.employees && parsed.employees.length) state.employees = parsed.employees;
+        if (parsed && parsed.leaves) state.leaves = parsed.leaves;
+      }
+    }catch(e){}
+  }
+
+  function updateEmployee(id, patch){
+    if (usingDb){
+      db.doc("employees/"+id).update(patch).catch(function(){});
+    } else {
+      var e = state.employees.find(function(x){ return x.id === id; });
+      if (e){ Object.assign(e, patch); saveLocal(); renderAll(); }
+    }
+  }
+
+  function addLeave(record){
+    if (usingDb){
+      db.collection("leaves").add(record).catch(function(err){
+        showFormMsg("저장에 실패했습니다: " + (err && err.message ? err.message : "알 수 없는 오류"));
+      });
+    } else {
+      record.id = "l" + Date.now() + Math.random().toString(36).slice(2,7);
+      state.leaves.push(record);
+      saveLocal();
+      renderAll();
+    }
+  }
+
+  function deleteLeave(id){
+    if (usingDb){
+      db.doc("leaves/"+id).delete().catch(function(){});
+    } else {
+      state.leaves = state.leaves.filter(function(l){ return l.id !== id; });
+      saveLocal();
+      renderAll();
+    }
+  }
+
+  function addEmployee(name){
+    var data = { name: name || "새 직원", totalDays: 15 };
+    if (usingDb){
+      db.collection("employees").add(data).catch(function(){});
+    } else {
+      data.id = "emp" + Date.now() + Math.random().toString(36).slice(2,7);
+      state.employees.push(data);
+      saveLocal();
+      renderAll();
+    }
+  }
+
+  function deleteEmployee(id){
+    var relatedLeaves = state.leaves.filter(function(l){ return l.employeeId === id; });
+    if (usingDb){
+      db.doc("employees/"+id).delete().catch(function(){});
+      relatedLeaves.forEach(function(l){ db.doc("leaves/"+l.id).delete().catch(function(){}); });
+    } else {
+      state.employees = state.employees.filter(function(e){ return e.id !== id; });
+      state.leaves = state.leaves.filter(function(l){ return l.employeeId !== id; });
+      saveLocal();
+      renderAll();
+    }
+  }
+
+  function showFormMsg(msg){
+    document.getElementById("formMsg").textContent = msg || "";
+  }
+
+  function updatePreview(){
+    var type = document.getElementById("f-type").value;
+    var start = document.getElementById("f-start").value;
+    var endField = document.getElementById("f-end-field");
+    var endInput = document.getElementById("f-end");
+    var preview = document.getElementById("preview");
+
+    if (HALF_TYPES[type]){
+      endInput.value = start;
+      endField.style.display = "none";
+      preview.innerHTML = '반차 처리 · <b>0.5일</b> 계산됨';
+    } else {
+      endField.style.display = "";
+      if (endInput.value && start && endInput.value < start) endInput.value = start;
+      var days = start && endInput.value ? countWeekdays(start, endInput.value) : 0;
+      preview.innerHTML = '평일 기준 <b>'+days+'일</b> 계산됨';
+    }
+  }
+
+  function initForm(){
+    var startInput = document.getElementById("f-start");
+    var endInput = document.getElementById("f-end");
+    var typeSelect = document.getElementById("f-type");
+    startInput.value = todayStr();
+    endInput.value = todayStr();
+
+    typeSelect.addEventListener("change", updatePreview);
+    startInput.addEventListener("change", updatePreview);
+    endInput.addEventListener("change", updatePreview);
+    updatePreview();
+
+    document.getElementById("leaveForm").addEventListener("submit", function(ev){
+      ev.preventDefault();
+      showFormMsg("");
+      var empId = document.getElementById("f-emp").value;
+      var type = typeSelect.value;
+      var start = startInput.value;
+      var end = HALF_TYPES[type] ? start : endInput.value;
+      if (!empId || !start || !end){ showFormMsg("필수 항목을 모두 입력해주세요."); return; }
+      if (end < start){ showFormMsg("종료일은 시작일보다 빠를 수 없습니다."); return; }
+
+      var days = HALF_TYPES[type] ? 0.5 : countWeekdays(start, end);
+      if (days <= 0){ showFormMsg("선택한 기간에 평일이 없습니다."); return; }
+
+      addLeave({
+        employeeId: empId,
+        type: type,
+        start: start,
+        end: end,
+        days: days,
+        memo: document.getElementById("f-memo").value.trim(),
+        createdAt: new Date().toISOString()
+      });
+
+      document.getElementById("f-memo").value = "";
+    });
+
+    document.getElementById("filterEmp").addEventListener("change", renderHistory);
+
+    document.getElementById("addEmpBtn").addEventListener("click", function(){
+      var input = document.getElementById("newEmpName");
+      var name = input.value.trim();
+      if (!name) return;
+      addEmployee(name);
+      input.value = "";
+    });
+    document.getElementById("newEmpName").addEventListener("keydown", function(ev){
+      if (ev.key === "Enter"){ ev.preventDefault(); document.getElementById("addEmpBtn").click(); }
+    });
+  }
+
+  function seedLocalIfEmpty(){
+    loadLocal();
+    renderAll();
+  }
+
+  async function boot(){
+    initForm();
+    seedLocalIfEmpty();
+
+    try{
+      db = await window.claude.use("db");
+    }catch(e){
+      db = null;
+    }
+
+    if (!db){
+      setSync("off");
+      return;
+    }
+
+    usingDb = true;
+    setSync("on");
+
+    db.collection("employees").onSnapshot(function(snap){
+      state.employees = snap.docs.map(function(d){
+        var data = d.data() || {};
+        return { id: d.id, name: data.name || d.id, totalDays: typeof data.totalDays === "number" ? data.totalDays : 15 };
+      });
+      renderAll();
+    }, function(){ setSync("off"); usingDb = false; });
+
+    db.collection("leaves").onSnapshot(function(snap){
+      state.leaves = snap.docs.map(function(d){
+        var data = d.data() || {};
+        return {
+          id: d.id,
+          employeeId: data.employeeId,
+          type: data.type,
+          start: data.start,
+          end: data.end,
+          days: data.days,
+          memo: data.memo || "",
+          createdAt: data.createdAt || ""
+        };
+      });
+      renderAll();
+    }, function(){ setSync("off"); usingDb = false; });
+  }
+
+  boot();
+})();
+</script>
